@@ -38,6 +38,7 @@ var KINESIS_SERVICE_NAME = "aws:kinesis";
 var FIREHOSE_MAX_BATCH_COUNT = 500;
 // firehose max PutRecordBatch size 4MB
 var FIREHOSE_MAX_BATCH_BYTES = 4 * 1024 * 1024;
+var OUTPUT_ENCODING = 'utf-8';
 
 // should KPL checksums be calculated?
 var computeChecksums = true;
@@ -104,18 +105,18 @@ function init() {
 
 /**
  * Example transformer that adds a newline to each event
- * 
+ *
  * Args:
- * 
+ *
  * data - Object or string containing the data to be transformed
- * 
+ *
  * callback(err, Buffer) - callback to be called once transformation is
  * completed. If supplied callback is with a null/undefined output (such as
  * filtering) then nothing will be sent to Firehose
  */
 exports.addNewlineTransformer = function(data, callback) {
 	// emitting a new buffer as ascii text with newline
-	callback(null, new Buffer(JSON.stringify(data) + "\n"));
+	callback(null, new Buffer(data + "\n"));
 };
 
 /**
@@ -160,7 +161,7 @@ exports.getBatchRanges = function(records) {
 	for (var i = 0; i < records.length; i++) {
 		// need to calculate the total record size for the call to Firehose on
 		// the basis of of non-base64 encoded values
-		recordSize = Buffer.byteLength(records[i].Data.toString('ascii'), 'ascii');
+		recordSize = Buffer.byteLength(records[i].Data.toString(OUTPUT_ENCODING), OUTPUT_ENCODING);
 
 		// batch always has 1 entry, so add it first
 		batchCurrentBytes += recordSize;
@@ -356,7 +357,7 @@ exports.handler = function(event, context) {
 
 				// transform the user records
 				async.map(userRecords, function(userRecord, userRecordCallback) {
-					var dataItem = serviceName === KINESIS_SERVICE_NAME ? new Buffer(userRecord.data, 'base64').toString('ascii') : userRecord;
+					var dataItem = serviceName === KINESIS_SERVICE_NAME ? new Buffer(userRecord.data, 'base64').toString(OUTPUT_ENCODING) : userRecord;
 
 					// only transform the data portion of a kinesis record, or
 					// the entire dynamo record
